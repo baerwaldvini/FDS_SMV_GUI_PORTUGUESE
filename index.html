@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FDS & SMV</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacao principal">
+        <div class="brand">
+          <span class="brand-mark">FS</span>
+          <div>
+            <strong>FDS & SMV</strong>
+            <span>Interface operacional</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Modulos">
+          <button class="nav-item active" type="button" data-view="workspace">
+            <span aria-hidden="true">▦</span>
+            <span>Espaco de trabalho</span>
+          </button>
+          <button class="nav-item" type="button" data-view="scenarios">
+            <span aria-hidden="true">≡</span>
+            <span>Cenarios</span>
+          </button>
+          <button class="nav-item" type="button" data-view="results">
+            <span aria-hidden="true">◷</span>
+            <span>Resultados</span>
+          </button>
+          <button class="nav-item" type="button" data-view="settings">
+            <span aria-hidden="true">⚙</span>
+            <span>Ajustes</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span>Status do motor</span>
+          <strong id="engineStatus">Pronto</strong>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Projeto ativo</p>
+            <h1>Modelagem FDS & SMV</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" title="Importar arquivo" aria-label="Importar arquivo">↥</button>
+            <button class="icon-button" type="button" title="Salvar projeto" aria-label="Salvar projeto">✓</button>
+            <button class="primary-button" type="button" id="runButton">Executar analise</button>
+          </div>
+        </header>
+
+        <section class="workspace-grid" aria-label="Espaco de trabalho">
+          <section class="panel module-panel" aria-labelledby="moduleTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Entrada</p>
+                <h2 id="moduleTitle">Modulo de calculo</h2>
+              </div>
+              <div class="segmented-control" role="tablist" aria-label="Selecionar modulo">
+                <button class="segment active" type="button" data-module="fds">FDS</button>
+                <button class="segment" type="button" data-module="smv">SMV</button>
+              </div>
+            </div>
+
+            <form class="form-grid" id="parameterForm">
+              <label>
+                <span>Nome do cenario</span>
+                <input name="scenario" type="text" value="Cenario inicial" autocomplete="off">
+              </label>
+              <label>
+                <span>Arquivo de entrada</span>
+                <input name="inputFile" type="text" value="modelo.fds" autocomplete="off">
+              </label>
+              <label>
+                <span>Tempo de simulacao</span>
+                <input name="duration" type="number" min="1" value="120">
+              </label>
+              <label>
+                <span>Intervalo de amostragem</span>
+                <input name="sample" type="number" min="1" value="5">
+              </label>
+              <label>
+                <span>Modo</span>
+                <select name="mode">
+                  <option>Validacao rapida</option>
+                  <option>Simulacao completa</option>
+                  <option>Comparacao</option>
+                </select>
+              </label>
+              <label class="toggle-row">
+                <input name="exportReport" type="checkbox" checked>
+                <span>Gerar relatorio apos execucao</span>
+              </label>
+            </form>
+          </section>
+
+          <section class="panel preview-panel" aria-labelledby="previewTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Previa</p>
+                <h2 id="previewTitle">Fluxo do caso</h2>
+              </div>
+              <span class="status-pill" id="moduleBadge">FDS</span>
+            </div>
+            <div class="flow-map" aria-label="Fluxo da analise">
+              <div class="flow-step active">Entrada</div>
+              <div class="flow-line"></div>
+              <div class="flow-step">Validacao</div>
+              <div class="flow-line"></div>
+              <div class="flow-step">Execucao</div>
+              <div class="flow-line"></div>
+              <div class="flow-step">Relatorio</div>
+            </div>
+            <div class="console" aria-live="polite" id="consoleOutput">
+              <span>&gt; Ambiente pronto para iniciar uma analise.</span>
+              <span>&gt; Selecione FDS ou SMV e ajuste os parametros.</span>
+            </div>
+          </section>
+
+          <section class="panel queue-panel" aria-labelledby="queueTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Fila</p>
+                <h2 id="queueTitle">Execucoes recentes</h2>
+              </div>
+              <button class="ghost-button" type="button" id="clearQueue">Limpar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cenario</th>
+                    <th>Modulo</th>
+                    <th>Status</th>
+                    <th>Duracao</th>
+                  </tr>
+                </thead>
+                <tbody id="runTable">
+                  <tr>
+                    <td>Cenario inicial</td>
+                    <td>FDS</td>
+                    <td><span class="state complete">Concluido</span></td>
+                    <td>120 s</td>
+                  </tr>
+                  <tr>
+                    <td>Comparacao base</td>
+                    <td>SMV</td>
+                    <td><span class="state waiting">Aguardando</span></td>
+                    <td>90 s</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel metrics-panel" aria-labelledby="metricsTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Indicadores</p>
+                <h2 id="metricsTitle">Resumo</h2>
+              </div>
+            </div>
+            <div class="metric-list">
+              <div class="metric-item">
+                <span>Cenarios</span>
+                <strong id="scenarioCount">2</strong>
+              </div>
+              <div class="metric-item">
+                <span>Tempo total</span>
+                <strong id="totalDuration">210 s</strong>
+              </div>
+              <div class="metric-item">
+                <span>Ultimo modulo</span>
+                <strong id="lastModule">FDS</strong>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
