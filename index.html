@@ -49,8 +49,8 @@
             <h1>Modelagem FDS & SMV</h1>
           </div>
           <div class="topbar-actions">
-            <button class="icon-button" type="button" title="Importar arquivo" aria-label="Importar arquivo">↥</button>
-            <button class="icon-button" type="button" title="Salvar projeto" aria-label="Salvar projeto">✓</button>
+            <button class="icon-button" type="button" title="Validar ambiente" aria-label="Validar ambiente" id="validateButton">✓</button>
+            <button class="icon-button" type="button" title="Abrir Smokeview" aria-label="Abrir Smokeview" id="smokeviewButton">◉</button>
             <button class="primary-button" type="button" id="runButton">Executar analise</button>
           </div>
         </header>
@@ -71,26 +71,26 @@
             <form class="form-grid" id="parameterForm">
               <label>
                 <span>Nome do cenario</span>
-                <input name="scenario" type="text" value="Cenario inicial" autocomplete="off">
+                <input name="scenario" type="text" value="PPCI Claudia - Incendio Grande" autocomplete="off">
               </label>
               <label>
                 <span>Arquivo de entrada</span>
-                <input name="inputFile" type="text" value="modelo.fds" autocomplete="off">
+                <input name="inputFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
               </label>
               <label>
                 <span>Tempo de simulacao</span>
-                <input name="duration" type="number" min="1" value="120">
+                <input name="duration" type="number" min="1" value="300">
               </label>
               <label>
                 <span>Intervalo de amostragem</span>
-                <input name="sample" type="number" min="1" value="5">
+                <input name="sample" type="number" min="1" value="1">
               </label>
               <label>
                 <span>Modo</span>
                 <select name="mode">
-                  <option>Validacao rapida</option>
                   <option>Simulacao completa</option>
-                  <option>Comparacao</option>
+                  <option>Validacao de arquivo</option>
+                  <option>Abrir visualizacao SMV</option>
                 </select>
               </label>
               <label class="toggle-row">
@@ -115,11 +115,11 @@
               <div class="flow-line"></div>
               <div class="flow-step">Execucao</div>
               <div class="flow-line"></div>
-              <div class="flow-step">Relatorio</div>
+              <div class="flow-step">Smokeview</div>
             </div>
             <div class="console" aria-live="polite" id="consoleOutput">
-              <span>&gt; Ambiente pronto para iniciar uma analise.</span>
-              <span>&gt; Selecione FDS ou SMV e ajuste os parametros.</span>
+              <span>&gt; Backend local aguardando em http://127.0.0.1:8765.</span>
+              <span>&gt; Use validar para confirmar FDS, Smokeview e arquivo de entrada.</span>
             </div>
           </section>
 
@@ -143,16 +143,10 @@
                 </thead>
                 <tbody id="runTable">
                   <tr>
-                    <td>Cenario inicial</td>
+                    <td>PPCI Claudia</td>
                     <td>FDS</td>
-                    <td><span class="state complete">Concluido</span></td>
-                    <td>120 s</td>
-                  </tr>
-                  <tr>
-                    <td>Comparacao base</td>
-                    <td>SMV</td>
                     <td><span class="state waiting">Aguardando</span></td>
-                    <td>90 s</td>
+                    <td>300 s</td>
                   </tr>
                 </tbody>
               </table>
@@ -169,11 +163,11 @@
             <div class="metric-list">
               <div class="metric-item">
                 <span>Cenarios</span>
-                <strong id="scenarioCount">2</strong>
+                <strong id="scenarioCount">1</strong>
               </div>
               <div class="metric-item">
                 <span>Tempo total</span>
-                <strong id="totalDuration">210 s</strong>
+                <strong id="totalDuration">300 s</strong>
               </div>
               <div class="metric-item">
                 <span>Ultimo modulo</span>
