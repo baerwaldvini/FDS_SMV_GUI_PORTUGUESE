@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $HostName = "127.0.0.1"
-$Port = 8765
+$Port = 8766
 $Prefix = "http://${HostName}:${Port}/"
 $Root = $PSScriptRoot
 $FdsExe = "C:\Program Files\firemodels\FDS6\bin\fds.exe"
@@ -132,6 +132,67 @@ if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   return ($Result | Select-Object -First 1)
 }
 
+function Escape-PowerShellLiteral($Value) {
+  return ([string]$Value).Replace("'", "''")
+}
+
+function Start-PickerProcess($Kind, $CurrentPath) {
+  $Token = [guid]::NewGuid().ToString("N")
+  $ResultPath = Join-Path $env:TEMP "fds-gui-picker-$Token.txt"
+  $InitialDirectory = [Environment]::GetFolderPath("MyDocuments")
+  $DefaultFileName = ""
+
+  if (-not [string]::IsNullOrWhiteSpace($CurrentPath)) {
+    if (Test-Path -LiteralPath $CurrentPath -PathType Container) {
+      $InitialDirectory = $CurrentPath
+    } else {
+      $Parent = Split-Path -Parent $CurrentPath -ErrorAction SilentlyContinue
+      if ($Parent -and (Test-Path -LiteralPath $Parent -PathType Container)) {
+        $InitialDirectory = $Parent
+      }
+      $DefaultFileName = Split-Path -Leaf $CurrentPath -ErrorAction SilentlyContinue
+    }
+  }
+
+  $EscapedResultPath = Escape-PowerShellLiteral $ResultPath
+  $EscapedInitialDirectory = Escape-PowerShellLiteral $InitialDirectory
+  $EscapedDefaultFileName = Escape-PowerShellLiteral $DefaultFileName
+
+  if ($Kind -eq "folder") {
+    $DialogScript = @"
+Add-Type -AssemblyName System.Windows.Forms
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+`$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+`$dialog.SelectedPath = '$EscapedInitialDirectory'
+`$dialog.Description = 'Selecione a pasta onde a GUI deve gerar o caso FDS'
+if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  Set-Content -LiteralPath '$EscapedResultPath' -Value `$dialog.SelectedPath -Encoding UTF8
+} else {
+  Set-Content -LiteralPath '$EscapedResultPath' -Value '' -Encoding UTF8
+}
+"@
+  } else {
+    $DialogScript = @"
+Add-Type -AssemblyName System.Windows.Forms
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+`$dialog = New-Object System.Windows.Forms.OpenFileDialog
+`$dialog.Filter = 'Pranchas e arquivos FDS|*.fds;*.pdf;*.dxf;*.dwg;*.png;*.jpg;*.jpeg|Todos os arquivos|*.*'
+`$dialog.InitialDirectory = '$EscapedInitialDirectory'
+`$dialog.FileName = '$EscapedDefaultFileName'
+if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  Set-Content -LiteralPath '$EscapedResultPath' -Value `$dialog.FileName -Encoding UTF8
+} else {
+  Set-Content -LiteralPath '$EscapedResultPath' -Value '' -Encoding UTF8
+}
+"@
+  }
+
+  $Bytes = [System.Text.Encoding]::Unicode.GetBytes($DialogScript)
+  $Encoded = [Convert]::ToBase64String($Bytes)
+  Start-Process powershell -ArgumentList "-NoProfile", "-STA", "-EncodedCommand", $Encoded | Out-Null
+  return @{ token = $Token; resultPath = $ResultPath }
+}
+
 function Refresh-State {
   if ($State.job -ne $null) {
     $Job = Get-Job -Id $State.job.Id -ErrorAction SilentlyContinue
@@ -196,6 +257,11 @@ $Listener.Prefixes.Add($Prefix)
 $Listener.Start()
 Write-Host "FDS & SMV GUI em $Prefix"
 Write-Host "Pressione Ctrl+C para encerrar."
+try {
+  Start-Process $Prefix
+} catch {
+  Write-Host "Abra manualmente: $Prefix"
+}
 
 while ($Listener.IsListening) {
   $Context = $Listener.GetContext()
@@ -220,6 +286,23 @@ while ($Listener.IsListening) {
         last_input = $State.last_input
         last_smv = $State.last_smv
         log = $State.log
+      }
+      continue
+    }
+
+    if ($Method -eq "GET" -and $Path -eq "/api/select-file-result") {
+      $Token = [string]$Context.Request.QueryString["token"]
+      if ([string]::IsNullOrWhiteSpace($Token) -or $Token -notmatch "^[a-fA-F0-9]{32}$") {
+        Send-Json $Context 400 @{ error = "Token invalido." }
+        continue
+      }
+      $ResultPath = Join-Path $env:TEMP "fds-gui-picker-$Token.txt"
+      if (Test-Path -LiteralPath $ResultPath -PathType Leaf) {
+        $SelectedPath = (Get-Content -LiteralPath $ResultPath -Raw -ErrorAction SilentlyContinue).Trim()
+        Remove-Item -LiteralPath $ResultPath -Force -ErrorAction SilentlyContinue
+        Send-Json $Context 200 @{ done = $true; path = $SelectedPath }
+      } else {
+        Send-Json $Context 200 @{ done = $false }
       }
       continue
     }
@@ -254,17 +337,8 @@ while ($Listener.IsListening) {
       $Payload = Read-JsonBody $Context
       $Kind = [string]$Payload.kind
       $CurrentPath = [string]$Payload.currentPath
-      $Mode = "open"
-      $Filter = "Pranchas e arquivos FDS|*.fds;*.pdf;*.dxf;*.dwg;*.png;*.jpg;*.jpeg|Todos os arquivos|*.*"
-
-      if ($Kind -eq "folder") {
-        $SelectedPath = Show-FolderDialog $CurrentPath
-        Send-Json $Context 200 @{ path = $SelectedPath }
-        continue
-      }
-
-      $SelectedPath = Show-FileDialog $Mode $Filter $CurrentPath
-      Send-Json $Context 200 @{ path = $SelectedPath }
+      $Picker = Start-PickerProcess $Kind $CurrentPath
+      Send-Json $Context 202 @{ pending = $true; token = $Picker.token }
       continue
     }
 

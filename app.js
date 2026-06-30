@@ -12,7 +12,7 @@ const fuelHelp = document.querySelector("#fuelHelp");
 const consoleOutput = document.querySelector("#consoleOutput");
 const engineStatus = document.querySelector("#engineStatus");
 
-const API_BASE = "http://127.0.0.1:8765";
+const API_BASE = "http://127.0.0.1:8766";
 
 const fuelDescriptions = {
   generic_office: "Carga de escritorio: aproximacao para mesas, papel e plasticos leves. Use como ponto de partida e revise conforme carga de incendio real.",
@@ -63,13 +63,38 @@ async function postJson(path, payload) {
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    throw new Error("Backend local indisponivel. Abra a GUI pelo start-gui.bat e use http://127.0.0.1:8765.");
+    throw new Error("Backend local indisponivel. Abra a GUI pelo start-gui.bat e use http://127.0.0.1:8766.");
   }
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || "Falha na comunicacao com o backend.");
   }
   return data;
+}
+
+async function getJson(path) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`);
+  } catch (error) {
+    throw new Error("Backend local indisponivel. Abra a GUI pelo start-gui.bat e use http://127.0.0.1:8766.");
+  }
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Falha na comunicacao com o backend.");
+  }
+  return data;
+}
+
+async function waitForPickerResult(token) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const result = await getJson(`/api/select-file-result?token=${encodeURIComponent(token)}`);
+    if (result.done) {
+      return result.path || "";
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+  }
+  throw new Error("Selecao de arquivo expirou.");
 }
 
 async function checkBackend() {
@@ -80,7 +105,7 @@ async function checkBackend() {
     }
     addConsoleLine("Backend local conectado.");
   } catch (error) {
-    addConsoleLine("Backend local indisponivel. Inicie pelo start-gui.bat e acesse http://127.0.0.1:8765.");
+    addConsoleLine("Backend local indisponivel. Inicie pelo start-gui.bat e acesse http://127.0.0.1:8766.");
   }
 }
 
@@ -113,11 +138,13 @@ document.querySelectorAll("[data-file-target]").forEach((button) => {
         kind: button.dataset.fileKind,
         currentPath: input.value,
       });
-      if (result.path) {
-        input.value = result.path;
-        addConsoleLine(`Arquivo selecionado: ${result.path}`);
+      addConsoleLine("Aguardando selecao na janela do Windows.");
+      const selectedPath = result.token ? await waitForPickerResult(result.token) : result.path;
+      if (selectedPath) {
+        input.value = selectedPath;
+        addConsoleLine(`Caminho selecionado: ${selectedPath}`);
       } else {
-        addConsoleLine("Selecao de arquivo cancelada.");
+        addConsoleLine("Selecao cancelada.");
       }
     } catch (error) {
       addConsoleLine(error.message);
