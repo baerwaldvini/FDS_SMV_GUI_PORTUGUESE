@@ -32,6 +32,11 @@ select {
   font: inherit;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .file-picker-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -448,6 +453,63 @@ button:focus-visible {
 
 .room-service {
   border-color: #7b8b81;
+}
+
+.room-pending {
+  border-style: dashed;
+  background: rgba(238, 242, 239, 0.76);
+  color: #69766d;
+}
+
+.preview-pending .room,
+.preview-empty .room {
+  opacity: 0.78;
+}
+
+.preview-message {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  min-height: 34px;
+  border: 1px solid rgba(22, 107, 85, 0.28);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(23, 32, 27, 0.08);
+}
+
+.preview-raster {
+  display: block;
+}
+
+.raster-preview-surface {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(23, 32, 27, 0.18);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.raster-preview-surface span {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.raster-wall {
+  position: absolute;
+  display: block;
+  min-width: 3px;
+  min-height: 3px;
+  background: #25372e;
+  box-shadow: 0 0 0 1px rgba(37, 55, 46, 0.16);
 }
 
 .incident-marker,

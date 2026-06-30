@@ -11,6 +11,13 @@ const hrrpua = document.querySelector("#hrrpua");
 const fuelHelp = document.querySelector("#fuelHelp");
 const consoleOutput = document.querySelector("#consoleOutput");
 const engineStatus = document.querySelector("#engineStatus");
+const moduleBadge = document.querySelector("#moduleBadge");
+const previewTitle = document.querySelector("#previewTitle");
+const planCanvas = document.querySelector(".plan-canvas");
+const extinguisherCount = document.querySelector("#extinguisherCount");
+const hydrantCount = document.querySelector("#hydrantCount");
+const exitCount = document.querySelector("#exitCount");
+const solidCount = document.querySelector("#solidCount");
 const stepTitle = document.querySelector("#stepTitle");
 const stepDescription = document.querySelector("#stepDescription");
 const stepChecklist = document.querySelector("#stepChecklist");
@@ -105,8 +112,10 @@ function formPayload() {
     projectName: projectData.get("projectName") || "Projeto sem nome",
     drawingFile: projectData.get("drawingFile") || "",
     outputFolder: projectData.get("outputFolder") || "",
+    scale: projectData.get("scale") || "",
     ceilingHeight: projectData.get("ceilingHeight") || "0",
     area: projectData.get("area") || "0",
+    reviewRequired: projectData.get("reviewRequired") === "on",
     fuelType: fireData.get("fuelType") || "",
     hrrpua: fireData.get("hrrpua") || "0",
     incidentLocation: fireData.get("incidentLocation") || "",
@@ -114,6 +123,148 @@ function formPayload() {
     meshSize: fireData.get("meshSize") || "",
     ventilation: fireData.get("ventilation") || "",
   };
+}
+
+function setMetricValue(element, value) {
+  if (element) {
+    element.textContent = Number.isFinite(Number(value)) ? String(value) : "0";
+  }
+}
+
+function createPreviewElement(className, text, title) {
+  const element = document.createElement("div");
+  element.className = className;
+  if (title) {
+    element.title = title;
+  }
+  if (text) {
+    const label = document.createElement("span");
+    label.textContent = text;
+    element.appendChild(label);
+  }
+  return element;
+}
+
+function createPreviewMarker(className, title) {
+  const marker = document.createElement("i");
+  marker.className = className;
+  marker.title = title;
+  return marker;
+}
+
+function renderPendingPreview(model) {
+  planCanvas.classList.add("preview-pending");
+  const room = createPreviewElement("room room-main room-pending", "OCR/CV pendente");
+  const sideTop = createPreviewElement("room room-corridor room-pending", "Prancha");
+  const sideBottom = createPreviewElement("room room-service room-pending", "Aguardando leitura");
+  const overlay = createPreviewElement(
+    "preview-message",
+    model.extension ? `Arquivo ${model.extension.toUpperCase()} selecionado` : "Arquivo selecionado",
+  );
+
+  planCanvas.append(room, sideTop, sideBottom, overlay);
+}
+
+function renderFdsPreview(model) {
+  const solids = Number(model.geometry?.solids || 0);
+  const vents = Number(model.geometry?.vents || 0);
+  const meshes = Number(model.geometry?.meshes || 0);
+  const exits = Number(model.preventives?.exits || 0);
+  const hydrants = Number(model.preventives?.hydrants || 0);
+  const extinguishers = Number(model.preventives?.extinguishers || 0);
+  const hasGeometry = solids > 0 || vents > 0 || meshes > 0;
+
+  if (!hasGeometry) {
+    planCanvas.classList.add("preview-empty");
+    planCanvas.append(
+      createPreviewElement("room room-main room-pending", "Sem geometria FDS"),
+      createPreviewElement("room room-corridor room-pending", "MESH/OBST"),
+      createPreviewElement("room room-service room-pending", "VENT"),
+      createPreviewElement("preview-message", "Nenhum OBST, VENT ou MESH foi encontrado no arquivo."),
+    );
+    return;
+  }
+
+  const mainLabel = solids > 0 ? `${solids} solidos` : "Envelope";
+  const ventLabel = vents > 0 ? `${vents} vents` : "Sem vents";
+  const meshLabel = meshes > 0 ? `${meshes} malha(s)` : "Malha nao detectada";
+
+  const mainRoom = createPreviewElement("room room-main", mainLabel, "Solidos/OBST detectados no FDS");
+  const ventRoom = createPreviewElement("room room-corridor", ventLabel, "Aberturas/VENT detectadas no FDS");
+  const meshRoom = createPreviewElement("room room-service", meshLabel, "Malhas/MESH detectadas no FDS");
+
+  planCanvas.append(mainRoom, ventRoom, meshRoom);
+
+  if (extinguishers > 0) {
+    planCanvas.append(createPreviewMarker("device extinguisher", `${extinguishers} extintor(es)`));
+  }
+  if (hydrants > 0) {
+    planCanvas.append(createPreviewMarker("device hydrant", `${hydrants} hidrante(s)`));
+  }
+  if (exits > 0) {
+    planCanvas.append(createPreviewMarker("device exit-sign", `${exits} saida(s)`));
+  }
+}
+
+function renderRasterPreview(model) {
+  const walls = Array.isArray(model.geometry?.walls) ? model.geometry.walls : [];
+  const surface = createPreviewElement(
+    "raster-preview-surface",
+    walls.length ? "" : "Nenhuma parede detectada",
+    "Previa esquematica das linhas detectadas na prancha",
+  );
+
+  walls.forEach((wall) => {
+    const wallElement = document.createElement("i");
+    wallElement.className = "raster-wall";
+    wallElement.style.left = `${Math.max(Number(wall.x || 0) * 100, 0)}%`;
+    wallElement.style.top = `${Math.max(Number(wall.y || 0) * 100, 0)}%`;
+    wallElement.style.width = `${Math.max(Number(wall.w || 0.01) * 100, 0.8)}%`;
+    wallElement.style.height = `${Math.max(Number(wall.h || 0.01) * 100, 0.8)}%`;
+    surface.appendChild(wallElement);
+  });
+
+  const overlay = createPreviewElement(
+    "preview-message",
+    `${walls.length} parede(s) detectada(s) para gerar OBST no FDS`,
+  );
+
+  planCanvas.classList.add("preview-raster");
+  planCanvas.append(surface, overlay);
+}
+
+function renderPlanPreview(model) {
+  if (!planCanvas) {
+    return;
+  }
+
+  planCanvas.classList.remove("preview-pending", "preview-empty", "preview-raster");
+  planCanvas.innerHTML = "";
+
+  if (model.sourceType === "fds") {
+    renderFdsPreview(model);
+    return;
+  }
+  if (model.sourceType === "raster") {
+    renderRasterPreview(model);
+    return;
+  }
+
+  renderPendingPreview(model);
+}
+
+function updateExtractedModel(model) {
+  if (!model) {
+    return;
+  }
+
+  previewTitle.textContent = model.title || "Edificacao solida";
+  moduleBadge.textContent = model.status || "Revisao necessaria";
+  setMetricValue(extinguisherCount, model.preventives?.extinguishers);
+  setMetricValue(hydrantCount, model.preventives?.hydrants);
+  setMetricValue(exitCount, model.preventives?.exits);
+  setMetricValue(solidCount, model.geometry?.solids);
+  renderPlanPreview(model);
 }
 
 async function postJson(path, payload) {
@@ -186,11 +337,26 @@ fuelType.addEventListener("change", () => {
   addConsoleLine(`Material selecionado: ${selected.textContent}.`);
 });
 
-extractButton.addEventListener("click", () => {
-  engineStatus.textContent = "Revisao necessaria";
+extractButton.addEventListener("click", async () => {
+  const originalText = extractButton.textContent;
+  extractButton.disabled = true;
+  extractButton.textContent = "Interpretando...";
+  engineStatus.textContent = "Interpretando";
   addConsoleLine("Interpretacao da prancha solicitada.");
-  addConsoleLine("Modulo de OCR/CV ainda sera conectado: ele devera extrair paredes, aberturas, escala, compartimentos e preventivos.");
-  addConsoleLine("Por enquanto, a GUI prepara um rascunho FDS e destaca quais informacoes voce precisa revisar.");
+
+  try {
+    const result = await postJson("/api/interpret-drawing", formPayload());
+    updateExtractedModel(result.model);
+    engineStatus.textContent = result.reviewRequired ? "Revisao necessaria" : "Modelo interpretado";
+    addConsoleLine(result.message);
+    (result.notes || []).forEach((note) => addConsoleLine(note));
+  } catch (error) {
+    engineStatus.textContent = "Revisar entradas";
+    addConsoleLine(error.message);
+  } finally {
+    extractButton.disabled = false;
+    extractButton.textContent = originalText;
+  }
 });
 
 document.querySelectorAll("[data-file-target]").forEach((button) => {

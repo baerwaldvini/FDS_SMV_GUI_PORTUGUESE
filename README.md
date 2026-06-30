@@ -34,17 +34,22 @@ Implemented so far:
 - dropdown-driven fuel selection with explanatory text;
 - output-folder selection for generated FDS cases;
 - local PowerShell backend;
+- initial plan interpretation for PDF, PNG, JPG, JPEG and BMP files;
+- schematic preview of extracted wall/obstacle lines in the model panel;
+- basic parsing of existing `.fds` files to report MESH, OBST, VENT and DEVC records;
+- generation of draft FDS `OBST` geometry from detected raster wall lines;
 - detection of local FDS and Smokeview executables;
 - ability to call FDS with a configured `.fds` file;
 - ability to open a generated `.smv` file in Smokeview.
 
 Still planned:
 
-- PDF/DWG/DXF/image drawing import;
-- OCR and computer vision pipeline for plan interpretation;
+- robust OCR and computer vision pipeline for PPCI plan interpretation;
+- DXF/DWG vector drawing import;
+- detection and classification of doors, windows and ventilation openings;
 - editable extracted geometry model;
 - prevention-symbol recognition;
-- FDS file generation from reviewed geometry;
+- FDS file generation from fully reviewed geometry;
 - validation rules for mandatory FDS inputs;
 - richer Smokeview/result inspection from the GUI.
 
@@ -57,6 +62,7 @@ Required:
 - FDS installed locally;
 - Smokeview installed locally;
 - PowerShell;
+- Microsoft Edge for PDF rendering, or a raster plan exported as PNG/JPG/BMP;
 - a modern browser.
 
 The current default paths are:
@@ -89,10 +95,13 @@ http://127.0.0.1:8766
 ## Architecture
 
 ```text
-Building drawing / FDS draft
+PPCI drawing / FDS draft
         |
         v
-GUI-assisted extraction and review
+PDF/image rendering + line extraction
+        |
+        v
+GUI-assisted preview and review
         |
         v
 Building geometry + prevention systems + fire scenario inputs
@@ -117,6 +126,12 @@ start-gui.ps1    Local PowerShell backend for FDS/Smokeview integration
 start-gui.bat    Windows launcher for the local GUI
 ```
 
+## Interpretation Notes
+
+The current interpreter is intentionally conservative. For PDF files, the backend renders the first page through Microsoft Edge and analyzes the resulting image. For raster files, it reads the image directly. Dark horizontal and vertical line groups are converted into normalized wall candidates and then emitted as FDS `&OBST` records when the draft case is generated.
+
+This is a first pass, not a certified PPCI parser. The generated geometry must be reviewed for scale, false positives from text or title blocks, missing openings, and compartment boundaries before any engineering use.
+
 ## Notes
 
 FDS and Smokeview are developed by NIST and the firemodels project. This GUI is intended as a higher-level modeling assistant that generates and executes compatible FDS cases.
@@ -125,4 +140,3 @@ Official resources:
 
 - [FDS/Smokeview manuals](https://pages.nist.gov/fds-smv/manuals.html)
 - [firemodels/fds repository](https://github.com/firemodels/fds)
-"# FDS_SMV_GUI_PORTUGUESE" 
