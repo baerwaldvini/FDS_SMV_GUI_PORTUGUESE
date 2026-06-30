@@ -230,7 +230,10 @@ function Convert-RasterDrawingToModel($InputFile, $Payload) {
     }
 
     if ($MaxX -le $MinX -or $MaxY -le $MinY) {
-      throw "Nao encontrei linhas escuras suficientes para montar geometria."
+      return New-EmptyDrawingModel $InputFile "Imagem sem linhas detectadas" @(
+        "Nao encontrei linhas escuras suficientes para montar geometria."
+        "Se a prancha veio de PDF, exporte a folha em PNG/JPG com fundo branco e linhas pretas ou use um PDF vetorial."
+      )
     }
 
     $HorizontalGroups = @(Get-LineGroups $RowCounts ([Math]::Max([int]($Width * 0.18), 40)) 2)
@@ -290,6 +293,29 @@ function Convert-RasterDrawingToModel($InputFile, $Payload) {
   }
 }
 
+function New-EmptyDrawingModel($InputFile, $Status, $Notes) {
+  return @{
+    title = "Prancha nao interpretada"
+    status = $Status
+    sourceType = "drawing_pending"
+    extension = [System.IO.Path]::GetExtension($InputFile).ToLowerInvariant()
+    geometry = @{
+      solids = 0
+      vents = 0
+      meshes = 0
+      rooms = 0
+      walls = @()
+    }
+    preventives = @{
+      extinguishers = 0
+      hydrants = 0
+      exits = 0
+    }
+    notes = $Notes
+    reviewRequired = $true
+  }
+}
+
 function Get-EdgePath {
   $Candidates = @(
     "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
@@ -303,10 +329,157 @@ function Get-EdgePath {
   return $null
 }
 
+function Expand-PdfFlateData($Data) {
+  try {
+    $Offset = 0
+    if ($Data.Length -gt 2 -and $Data[0] -eq 0x78) {
+      $Offset = 2
+    }
+    $InputStream = New-Object System.IO.MemoryStream(, $Data)
+    $InputStream.Position = $Offset
+    $DeflateStream = New-Object System.IO.Compression.DeflateStream($InputStream, [System.IO.Compression.CompressionMode]::Decompress)
+    $OutputStream = New-Object System.IO.MemoryStream
+    $DeflateStream.CopyTo($OutputStream)
+    $DeflateStream.Dispose()
+    $InputStream.Dispose()
+    $Bytes = $OutputStream.ToArray()
+    $OutputStream.Dispose()
+    return [System.Text.Encoding]::ASCII.GetString($Bytes)
+  }
+  catch {
+    return ""
+  }
+}
+
+function Get-PdfDecodedText($InputFile) {
+  $Bytes = [System.IO.File]::ReadAllBytes($InputFile)
+  $Ascii = [System.Text.Encoding]::ASCII.GetString($Bytes)
+  $Chunks = @()
+  $Position = 0
+
+  while ($true) {
+    $StreamIndex = $Ascii.IndexOf("stream", $Position, [StringComparison]::Ordinal)
+    if ($StreamIndex -lt 0) { break }
+    $DataStart = $StreamIndex + 6
+    if ($DataStart -lt $Bytes.Length -and $Bytes[$DataStart] -eq 13) { $DataStart += 1 }
+    if ($DataStart -lt $Bytes.Length -and $Bytes[$DataStart] -eq 10) { $DataStart += 1 }
+
+    $EndIndex = $Ascii.IndexOf("endstream", $DataStart, [StringComparison]::Ordinal)
+    if ($EndIndex -lt 0) { break }
+    $DataEnd = $EndIndex
+    while ($DataEnd -gt $DataStart -and ($Bytes[$DataEnd - 1] -eq 10 -or $Bytes[$DataEnd - 1] -eq 13)) {
+      $DataEnd -= 1
+    }
+
+    $Length = $DataEnd - $DataStart
+    if ($Length -gt 0) {
+      $Data = New-Object byte[] $Length
+      [Array]::Copy($Bytes, $DataStart, $Data, 0, $Length)
+      $Decoded = Expand-PdfFlateData $Data
+      if (-not [string]::IsNullOrWhiteSpace($Decoded)) {
+        $Chunks += $Decoded
+      }
+    }
+
+    $Position = $EndIndex + 9
+  }
+
+  return ($Chunks -join "`n")
+}
+
+function Convert-PdfVectorToModel($InputFile, $Payload) {
+  $Text = Get-PdfDecodedText $InputFile
+  if ([string]::IsNullOrWhiteSpace($Text)) {
+    return $null
+  }
+
+  $Number = "[-+]?(?:\d+\.\d+|\d+|\.\d+)"
+  $RectMatches = [regex]::Matches($Text, "(?m)(?<x>$Number)\s+(?<y>$Number)\s+(?<w>$Number)\s+(?<h>$Number)\s+re\b")
+  $LineMatches = [regex]::Matches($Text, "(?m)(?<x1>$Number)\s+(?<y1>$Number)\s+m\s+(?<x2>$Number)\s+(?<y2>$Number)\s+l\b")
+  $Candidates = @()
+
+  foreach ($Match in $RectMatches) {
+    $X = [double]$Match.Groups["x"].Value
+    $Y = [double]$Match.Groups["y"].Value
+    $W = [Math]::Abs([double]$Match.Groups["w"].Value)
+    $H = [Math]::Abs([double]$Match.Groups["h"].Value)
+    if ($W -gt 1 -and $H -gt 1 -and (($W / [Math]::Max($H, 0.001)) -gt 4 -or ($H / [Math]::Max($W, 0.001)) -gt 4)) {
+      $Candidates += @{ x = $X; y = $Y; w = $W; h = $H }
+    }
+  }
+
+  foreach ($Match in $LineMatches) {
+    $X1 = [double]$Match.Groups["x1"].Value
+    $Y1 = [double]$Match.Groups["y1"].Value
+    $X2 = [double]$Match.Groups["x2"].Value
+    $Y2 = [double]$Match.Groups["y2"].Value
+    $Dx = [Math]::Abs($X2 - $X1)
+    $Dy = [Math]::Abs($Y2 - $Y1)
+    if ($Dx -gt 10 -and $Dy -lt 1.5) {
+      $Candidates += @{ x = [Math]::Min($X1, $X2); y = $Y1; w = $Dx; h = 1.0 }
+    }
+    elseif ($Dy -gt 10 -and $Dx -lt 1.5) {
+      $Candidates += @{ x = $X1; y = [Math]::Min($Y1, $Y2); w = 1.0; h = $Dy }
+    }
+  }
+
+  if ($Candidates.Count -lt 2) {
+    return $null
+  }
+
+  $MinX = ($Candidates | ForEach-Object { $_["x"] } | Measure-Object -Minimum).Minimum
+  $MinY = ($Candidates | ForEach-Object { $_["y"] } | Measure-Object -Minimum).Minimum
+  $MaxX = ($Candidates | ForEach-Object { $_["x"] + $_["w"] } | Measure-Object -Maximum).Maximum
+  $MaxY = ($Candidates | ForEach-Object { $_["y"] + $_["h"] } | Measure-Object -Maximum).Maximum
+  $PlanWidth = [Math]::Max($MaxX - $MinX, 1.0)
+  $PlanHeight = [Math]::Max($MaxY - $MinY, 1.0)
+  $Walls = @()
+
+  foreach ($Candidate in ($Candidates | Select-Object -First 100)) {
+    $Walls += New-RasterWall (($Candidate["x"] - $MinX) / $PlanWidth) (1.0 - (($Candidate["y"] + $Candidate["h"] - $MinY) / $PlanHeight)) ($Candidate["w"] / $PlanWidth) ($Candidate["h"] / $PlanHeight)
+  }
+
+  return @{
+    title = "PDF vetorial interpretado"
+    status = "Previa PDF"
+    sourceType = "raster"
+    extension = ".pdf"
+    geometry = @{
+      solids = $Walls.Count
+      vents = 0
+      meshes = 1
+      rooms = 0
+      walls = $Walls
+      imageWidth = [Math]::Round($PlanWidth, 2)
+      imageHeight = [Math]::Round($PlanHeight, 2)
+    }
+    preventives = @{
+      extinguishers = 0
+      hydrants = 0
+      exits = 0
+    }
+    notes = @(
+      "PDF vetorial lido por comandos internos de desenho."
+      "Foram encontrados $($Walls.Count) candidato(s) a parede/obstaculo para gerar OBST."
+      "Revise escala, textos interpretados como linha e aberturas antes da simulacao."
+    )
+    reviewRequired = $true
+  }
+}
+
 function Convert-PdfDrawingToModel($InputFile, $Payload) {
+  $VectorModel = Convert-PdfVectorToModel $InputFile $Payload
+  if ($VectorModel) {
+    return $VectorModel
+  }
+
   $EdgePath = Get-EdgePath
   if ([string]::IsNullOrWhiteSpace($EdgePath)) {
-    throw "Nao encontrei renderizador de PDF local. Converta a prancha para PNG/JPG ou instale Microsoft Edge/Poppler para interpretar PDF."
+    return New-EmptyDrawingModel $InputFile "PDF nao interpretado" @(
+      "Nao encontrei comandos vetoriais de paredes no PDF."
+      "Tambem nao encontrei renderizador de PDF local."
+      "Exporte a folha da PPCI para PNG/JPG em alta resolucao e tente novamente."
+    )
   }
 
   $RenderFile = Join-Path $env:TEMP "fds-gui-pdf-render-$([guid]::NewGuid().ToString('N')).png"
@@ -324,10 +497,25 @@ function Convert-PdfDrawingToModel($InputFile, $Payload) {
 
   $Process = Start-Process -FilePath $EdgePath -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
   if ($Process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $RenderFile -PathType Leaf)) {
-    throw "Nao consegui renderizar o PDF para imagem. Exporte a primeira folha da PPCI como PNG/JPG e tente novamente."
+    return New-EmptyDrawingModel $InputFile "PDF nao renderizado" @(
+      "Nao consegui renderizar o PDF para imagem."
+      "Exporte a primeira folha da PPCI como PNG/JPG e tente novamente."
+    )
   }
 
   $Model = Convert-RasterDrawingToModel $RenderFile $Payload
+  if ($Model.geometry.solids -eq 0) {
+    $Model["title"] = "PDF nao interpretado"
+    $Model["status"] = "Sem geometria"
+    $Model["extension"] = ".pdf"
+    $Model["notes"] = @(
+      "Nao encontrei comandos vetoriais de paredes no PDF."
+      "A renderizacao local do PDF nao trouxe linhas detectaveis para converter em OBST."
+      "Exporte a folha da PPCI para PNG/JPG em alta resolucao e tente novamente."
+    )
+    return $Model
+  }
+
   $Model["title"] = "PDF interpretado"
   $Model["status"] = "Previa PDF/CV"
   $Model["sourceType"] = "raster"
