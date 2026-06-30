@@ -55,16 +55,33 @@ function formPayload() {
 }
 
 async function postJson(path, payload) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw new Error("Backend local indisponivel. Abra a GUI pelo start-gui.bat e use http://127.0.0.1:8765.");
+  }
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || "Falha na comunicacao com o backend.");
   }
   return data;
+}
+
+async function checkBackend() {
+  try {
+    const response = await fetch(`${API_BASE}/api/status`);
+    if (!response.ok) {
+      throw new Error();
+    }
+    addConsoleLine("Backend local conectado.");
+  } catch (error) {
+    addConsoleLine("Backend local indisponivel. Inicie pelo start-gui.bat e acesse http://127.0.0.1:8765.");
+  }
 }
 
 navButtons.forEach((button) => {
@@ -86,6 +103,26 @@ extractButton.addEventListener("click", () => {
   engineStatus.textContent = "Revisao necessaria";
   addConsoleLine("Extracao simulada: paredes, aberturas e preventivos foram marcados para conferencia.");
   addConsoleLine("Proxima etapa real: conectar OCR/CV para ler PDF/DWG/imagem da prancha.");
+});
+
+document.querySelectorAll("[data-file-target]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const input = document.querySelector(`#${button.dataset.fileTarget}`);
+    try {
+      const result = await postJson("/api/select-file", {
+        kind: button.dataset.fileKind,
+        currentPath: input.value,
+      });
+      if (result.path) {
+        input.value = result.path;
+        addConsoleLine(`Arquivo selecionado: ${result.path}`);
+      } else {
+        addConsoleLine("Selecao de arquivo cancelada.");
+      }
+    } catch (error) {
+      addConsoleLine(error.message);
+    }
+  });
 });
 
 validateButton.addEventListener("click", async () => {
@@ -129,3 +166,5 @@ document.querySelector("#clearQueue").addEventListener("click", () => {
   consoleOutput.innerHTML = "";
   addConsoleLine("Console limpo.");
 });
+
+checkBackend();

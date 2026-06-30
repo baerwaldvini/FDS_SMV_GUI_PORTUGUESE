@@ -32,6 +32,23 @@ select {
   font: inherit;
 }
 
+.file-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.browse-button {
+  min-height: 42px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -561,7 +578,8 @@ th {
   }
 
   .form-grid,
-  .nav-list {
+  .nav-list,
+  .file-picker-row {
     grid-template-columns: 1fr;
   }
 

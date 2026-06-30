@@ -84,7 +84,10 @@
               </label>
               <label>
                 <span>Arquivo da prancha</span>
-                <input name="drawingFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+                <div class="file-picker-row">
+                  <input name="drawingFile" id="drawingFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+                  <button class="browse-button" type="button" data-file-target="drawingFile" data-file-kind="drawing">Procurar</button>
+                </div>
               </label>
               <label>
                 <span>Escala da prancha</span>
@@ -105,7 +108,10 @@
               </label>
               <label>
                 <span>Arquivo FDS de saida</span>
-                <input name="inputFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+                <div class="file-picker-row">
+                  <input name="inputFile" id="inputFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+                  <button class="browse-button" type="button" data-file-target="inputFile" data-file-kind="fds-output">Procurar</button>
+                </div>
               </label>
               <label class="toggle-row">
                 <input name="reviewRequired" type="checkbox" checked>

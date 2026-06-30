@@ -75,6 +75,40 @@ function Read-Chid($InputFile) {
   return [System.IO.Path]::GetFileNameWithoutExtension($InputFile)
 }
 
+function Show-FileDialog($Mode, $Filter, $CurrentPath) {
+  $InitialDirectory = [Environment]::GetFolderPath("MyDocuments")
+  $DefaultFileName = ""
+
+  if (-not [string]::IsNullOrWhiteSpace($CurrentPath)) {
+    $Parent = Split-Path -Parent $CurrentPath -ErrorAction SilentlyContinue
+    if ($Parent -and (Test-Path -LiteralPath $Parent -PathType Container)) {
+      $InitialDirectory = $Parent
+    }
+    $DefaultFileName = Split-Path -Leaf $CurrentPath -ErrorAction SilentlyContinue
+  }
+
+  $DialogScript = @"
+Add-Type -AssemblyName System.Windows.Forms
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+if ('$Mode' -eq 'save') {
+  `$dialog = New-Object System.Windows.Forms.SaveFileDialog
+} else {
+  `$dialog = New-Object System.Windows.Forms.OpenFileDialog
+}
+`$dialog.Filter = '$Filter'
+`$dialog.InitialDirectory = '$InitialDirectory'
+`$dialog.FileName = '$DefaultFileName'
+if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  Write-Output `$dialog.FileName
+}
+"@
+
+  $Bytes = [System.Text.Encoding]::Unicode.GetBytes($DialogScript)
+  $Encoded = [Convert]::ToBase64String($Bytes)
+  $Result = & powershell -NoProfile -STA -EncodedCommand $Encoded
+  return ($Result | Select-Object -First 1)
+}
+
 function Refresh-State {
   if ($State.job -ne $null) {
     $Job = Get-Job -Id $State.job.Id -ErrorAction SilentlyContinue
@@ -187,6 +221,23 @@ while ($Listener.IsListening) {
         smokeview = $SmokeviewExe
         inputFile = $InputFile
       }
+      continue
+    }
+
+    if ($Method -eq "POST" -and $Path -eq "/api/select-file") {
+      $Payload = Read-JsonBody $Context
+      $Kind = [string]$Payload.kind
+      $CurrentPath = [string]$Payload.currentPath
+      $Mode = "open"
+      $Filter = "Pranchas e arquivos FDS|*.fds;*.pdf;*.dxf;*.dwg;*.png;*.jpg;*.jpeg|Todos os arquivos|*.*"
+
+      if ($Kind -eq "fds-output") {
+        $Mode = "save"
+        $Filter = "Arquivos FDS|*.fds|Todos os arquivos|*.*"
+      }
+
+      $SelectedPath = Show-FileDialog $Mode $Filter $CurrentPath
+      Send-Json $Context 200 @{ path = $SelectedPath }
       continue
     }
 
