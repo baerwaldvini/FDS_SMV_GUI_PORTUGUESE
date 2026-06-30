@@ -109,6 +109,29 @@ if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   return ($Result | Select-Object -First 1)
 }
 
+function Show-FolderDialog($CurrentPath) {
+  $InitialDirectory = [Environment]::GetFolderPath("MyDocuments")
+  if (-not [string]::IsNullOrWhiteSpace($CurrentPath) -and (Test-Path -LiteralPath $CurrentPath -PathType Container)) {
+    $InitialDirectory = $CurrentPath
+  }
+
+  $DialogScript = @"
+Add-Type -AssemblyName System.Windows.Forms
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+`$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+`$dialog.SelectedPath = '$InitialDirectory'
+`$dialog.Description = 'Selecione a pasta onde a GUI deve gerar o caso FDS'
+if (`$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+  Write-Output `$dialog.SelectedPath
+}
+"@
+
+  $Bytes = [System.Text.Encoding]::Unicode.GetBytes($DialogScript)
+  $Encoded = [Convert]::ToBase64String($Bytes)
+  $Result = & powershell -NoProfile -STA -EncodedCommand $Encoded
+  return ($Result | Select-Object -First 1)
+}
+
 function Refresh-State {
   if ($State.job -ne $null) {
     $Job = Get-Job -Id $State.job.Id -ErrorAction SilentlyContinue
@@ -209,17 +232,20 @@ while ($Listener.IsListening) {
 
     if ($Method -eq "POST" -and $Path -eq "/api/validate") {
       $Payload = Read-JsonBody $Context
-      $InputFile = [string]$Payload.inputFile
+      $InputFile = [string]$Payload.drawingFile
+      $OutputFolder = [string]$Payload.outputFolder
       Send-Json $Context 200 @{
-        ok = ((Test-Path -LiteralPath $FdsExe) -and (Test-Path -LiteralPath $SmokeviewExe) -and (Test-Path -LiteralPath $InputFile))
+        ok = ((Test-Path -LiteralPath $FdsExe) -and (Test-Path -LiteralPath $SmokeviewExe) -and (Test-Path -LiteralPath $InputFile) -and (Test-Path -LiteralPath $OutputFolder -PathType Container))
         checks = @{
           fds = Test-Path -LiteralPath $FdsExe
           smokeview = Test-Path -LiteralPath $SmokeviewExe
           input = Test-Path -LiteralPath $InputFile
+          outputFolder = Test-Path -LiteralPath $OutputFolder -PathType Container
         }
         fds = $FdsExe
         smokeview = $SmokeviewExe
         inputFile = $InputFile
+        outputFolder = $OutputFolder
       }
       continue
     }
@@ -231,9 +257,10 @@ while ($Listener.IsListening) {
       $Mode = "open"
       $Filter = "Pranchas e arquivos FDS|*.fds;*.pdf;*.dxf;*.dwg;*.png;*.jpg;*.jpeg|Todos os arquivos|*.*"
 
-      if ($Kind -eq "fds-output") {
-        $Mode = "save"
-        $Filter = "Arquivos FDS|*.fds|Todos os arquivos|*.*"
+      if ($Kind -eq "folder") {
+        $SelectedPath = Show-FolderDialog $CurrentPath
+        Send-Json $Context 200 @{ path = $SelectedPath }
+        continue
       }
 
       $SelectedPath = Show-FileDialog $Mode $Filter $CurrentPath
@@ -248,9 +275,9 @@ while ($Listener.IsListening) {
         continue
       }
       $Payload = Read-JsonBody $Context
-      $InputFile = [string]$Payload.inputFile
+      $InputFile = [string]$Payload.drawingFile
       if (-not (Test-Path -LiteralPath $InputFile -PathType Leaf)) {
-        Send-Json $Context 400 @{ error = "Arquivo .fds nao encontrado." }
+        Send-Json $Context 400 @{ error = "Arquivo base ainda nao encontrado. Nesta etapa, o gerador FDS deve criar o .fds na pasta de saida antes de executar." }
         continue
       }
       Start-FdsRun $InputFile
@@ -260,7 +287,7 @@ while ($Listener.IsListening) {
 
     if ($Method -eq "POST" -and $Path -eq "/api/open-smokeview") {
       $Payload = Read-JsonBody $Context
-      $InputFile = [string]$Payload.inputFile
+      $InputFile = [string]$Payload.drawingFile
       if (-not (Test-Path -LiteralPath $InputFile -PathType Leaf)) {
         Send-Json $Context 400 @{ error = "Arquivo .fds nao encontrado." }
         continue

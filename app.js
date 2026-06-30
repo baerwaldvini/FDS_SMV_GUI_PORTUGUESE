@@ -42,7 +42,7 @@ function formPayload() {
   return {
     projectName: projectData.get("projectName") || "Projeto sem nome",
     drawingFile: projectData.get("drawingFile") || "",
-    inputFile: projectData.get("inputFile") || "",
+    outputFolder: projectData.get("outputFolder") || "",
     ceilingHeight: projectData.get("ceilingHeight") || "0",
     area: projectData.get("area") || "0",
     fuelType: fireData.get("fuelType") || "",
@@ -141,11 +141,12 @@ generateButton.addEventListener("click", async () => {
   engineStatus.textContent = "Exportando";
   addConsoleLine(`Geracao solicitada para "${payload.projectName}".`);
   addConsoleLine(`Incidente: ${payload.incidentLocation}; material: ${fuelType.selectedOptions[0].textContent}; HRRPUA: ${payload.hrrpua}.`);
-  addConsoleLine("Nesta etapa a GUI deve converter solidos revisados em MESH/OBST/VENT/SURF/REAC antes de chamar o FDS.");
+  addConsoleLine(`Pasta de saida: ${payload.outputFolder}.`);
+  addConsoleLine("Nesta etapa a GUI deve gerar o arquivo .fds na pasta de saida antes de chamar o FDS.");
 
   try {
     await postJson("/api/run", payload);
-    addConsoleLine("FDS iniciado usando o arquivo de saida configurado.");
+    addConsoleLine("FDS iniciado usando o caso gerado na pasta de saida.");
     engineStatus.textContent = "Executando FDS";
   } catch (error) {
     addConsoleLine(error.message);

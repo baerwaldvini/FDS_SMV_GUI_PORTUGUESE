@@ -32,6 +32,7 @@ Implemented so far:
 - responsive HTML/CSS/JavaScript interface;
 - guided workflow screens for drawing, building geometry, prevention systems, fire scenario, and FDS export;
 - dropdown-driven fuel selection with explanatory text;
+- output-folder selection for generated FDS cases;
 - local PowerShell backend;
 - detection of local FDS and Smokeview executables;
 - ability to call FDS with a configured `.fds` file;
