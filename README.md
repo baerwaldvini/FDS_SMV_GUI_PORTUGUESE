@@ -124,3 +124,4 @@ Official resources:
 
 - [FDS/Smokeview manuals](https://pages.nist.gov/fds-smv/manuals.html)
 - [firemodels/fds repository](https://github.com/firemodels/fds)
+"# FDS_SMV_GUI_PORTUGUESE" 
