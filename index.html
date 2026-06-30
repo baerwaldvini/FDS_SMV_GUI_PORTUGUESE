@@ -13,89 +13,103 @@
           <span class="brand-mark">FS</span>
           <div>
             <strong>FDS & SMV</strong>
-            <span>Interface operacional</span>
+            <span>Gerador guiado</span>
           </div>
         </div>
 
-        <nav class="nav-list" aria-label="Modulos">
-          <button class="nav-item active" type="button" data-view="workspace">
-            <span aria-hidden="true">▦</span>
-            <span>Espaco de trabalho</span>
+        <nav class="nav-list" aria-label="Etapas do projeto">
+          <button class="nav-item active" type="button" data-view="planta">
+            <span aria-hidden="true">▣</span>
+            <span>Prancha</span>
           </button>
-          <button class="nav-item" type="button" data-view="scenarios">
-            <span aria-hidden="true">≡</span>
-            <span>Cenarios</span>
+          <button class="nav-item" type="button" data-view="edificacao">
+            <span aria-hidden="true">▤</span>
+            <span>Edificacao</span>
           </button>
-          <button class="nav-item" type="button" data-view="results">
-            <span aria-hidden="true">◷</span>
-            <span>Resultados</span>
+          <button class="nav-item" type="button" data-view="preventivos">
+            <span aria-hidden="true">◎</span>
+            <span>Preventivos</span>
           </button>
-          <button class="nav-item" type="button" data-view="settings">
-            <span aria-hidden="true">⚙</span>
-            <span>Ajustes</span>
+          <button class="nav-item" type="button" data-view="incendio">
+            <span aria-hidden="true">△</span>
+            <span>Incendio</span>
+          </button>
+          <button class="nav-item" type="button" data-view="fds">
+            <span aria-hidden="true">▶</span>
+            <span>Gerar FDS</span>
           </button>
         </nav>
 
         <div class="sidebar-footer">
-          <span>Status do motor</span>
-          <strong id="engineStatus">Pronto</strong>
+          <span>Status do projeto</span>
+          <strong id="engineStatus">Rascunho</strong>
         </div>
       </aside>
 
       <main class="main-panel">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Projeto ativo</p>
-            <h1>Modelagem FDS & SMV</h1>
+            <p class="eyebrow">Fluxo inteligente</p>
+            <h1>Prancha para simulacao FDS/SMV</h1>
           </div>
           <div class="topbar-actions">
-            <button class="icon-button" type="button" title="Validar ambiente" aria-label="Validar ambiente" id="validateButton">✓</button>
+            <button class="icon-button" type="button" title="Validar ambiente FDS/SMV" aria-label="Validar ambiente FDS/SMV" id="validateButton">✓</button>
             <button class="icon-button" type="button" title="Abrir Smokeview" aria-label="Abrir Smokeview" id="smokeviewButton">◉</button>
-            <button class="primary-button" type="button" id="runButton">Executar analise</button>
+            <button class="primary-button" type="button" id="generateButton">Gerar caso FDS</button>
           </div>
         </header>
 
+        <section class="workflow-strip" aria-label="Progresso">
+          <button class="workflow-step active" type="button" data-step="planta">1. Ler prancha</button>
+          <button class="workflow-step" type="button" data-step="edificacao">2. Revisar solidos</button>
+          <button class="workflow-step" type="button" data-step="preventivos">3. Conferir preventivos</button>
+          <button class="workflow-step" type="button" data-step="incendio">4. Definir incendio</button>
+          <button class="workflow-step" type="button" data-step="fds">5. Exportar</button>
+        </section>
+
         <section class="workspace-grid" aria-label="Espaco de trabalho">
-          <section class="panel module-panel" aria-labelledby="moduleTitle">
+          <section class="panel module-panel" aria-labelledby="projectTitle">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Entrada</p>
-                <h2 id="moduleTitle">Modulo de calculo</h2>
+                <p class="eyebrow">Entrada principal</p>
+                <h2 id="projectTitle">Prancha e parametros de escala</h2>
               </div>
-              <div class="segmented-control" role="tablist" aria-label="Selecionar modulo">
-                <button class="segment active" type="button" data-module="fds">FDS</button>
-                <button class="segment" type="button" data-module="smv">SMV</button>
-              </div>
+              <span class="status-pill" id="moduleBadge">Analise assistida</span>
             </div>
 
-            <form class="form-grid" id="parameterForm">
+            <form class="form-grid" id="projectForm">
               <label>
-                <span>Nome do cenario</span>
-                <input name="scenario" type="text" value="PPCI Claudia - Incendio Grande" autocomplete="off">
+                <span>Nome do projeto</span>
+                <input name="projectName" type="text" value="PPCI Claudia - Incendio Grande" autocomplete="off">
               </label>
               <label>
-                <span>Arquivo de entrada</span>
-                <input name="inputFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+                <span>Arquivo da prancha</span>
+                <input name="drawingFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
               </label>
               <label>
-                <span>Tempo de simulacao</span>
-                <input name="duration" type="number" min="1" value="300">
-              </label>
-              <label>
-                <span>Intervalo de amostragem</span>
-                <input name="sample" type="number" min="1" value="1">
-              </label>
-              <label>
-                <span>Modo</span>
-                <select name="mode">
-                  <option>Simulacao completa</option>
-                  <option>Validacao de arquivo</option>
-                  <option>Abrir visualizacao SMV</option>
+                <span>Escala da prancha</span>
+                <select name="scale">
+                  <option>1:50</option>
+                  <option selected>1:100</option>
+                  <option>1:200</option>
+                  <option>Informar manualmente</option>
                 </select>
               </label>
+              <label>
+                <span>Pe-direito padrao</span>
+                <input name="ceilingHeight" type="number" min="1" step="0.05" value="2.80">
+              </label>
+              <label>
+                <span>Area total estimada</span>
+                <input name="area" type="number" min="1" step="0.01" value="511.57">
+              </label>
+              <label>
+                <span>Arquivo FDS de saida</span>
+                <input name="inputFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
+              </label>
               <label class="toggle-row">
-                <input name="exportReport" type="checkbox" checked>
-                <span>Gerar relatorio apos execucao</span>
+                <input name="reviewRequired" type="checkbox" checked>
+                <span>Exigir revisao humana antes de gerar o caso FDS</span>
               </label>
             </form>
           </section>
@@ -103,75 +117,114 @@
           <section class="panel preview-panel" aria-labelledby="previewTitle">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Previa</p>
-                <h2 id="previewTitle">Fluxo do caso</h2>
+                <p class="eyebrow">Modelo extraido</p>
+                <h2 id="previewTitle">Edificacao solida</h2>
               </div>
-              <span class="status-pill" id="moduleBadge">FDS</span>
+              <button class="ghost-button" type="button" id="extractButton">Simular extracao</button>
             </div>
-            <div class="flow-map" aria-label="Fluxo da analise">
-              <div class="flow-step active">Entrada</div>
-              <div class="flow-line"></div>
-              <div class="flow-step">Validacao</div>
-              <div class="flow-line"></div>
-              <div class="flow-step">Execucao</div>
-              <div class="flow-line"></div>
-              <div class="flow-step">Smokeview</div>
+
+            <div class="plan-canvas" aria-label="Previa esquematica da edificacao">
+              <div class="room room-main">
+                <span>Sala principal</span>
+                <i class="incident-marker" title="Incidente"></i>
+              </div>
+              <div class="room room-corridor"><span>Circulacao</span></div>
+              <div class="room room-service"><span>Apoio</span></div>
+              <i class="device extinguisher" title="Extintor"></i>
+              <i class="device hydrant" title="Hidrante"></i>
+              <i class="device exit-sign" title="Saida"></i>
             </div>
+
             <div class="console" aria-live="polite" id="consoleOutput">
-              <span>&gt; Backend local aguardando em http://127.0.0.1:8765.</span>
-              <span>&gt; Use validar para confirmar FDS, Smokeview e arquivo de entrada.</span>
+              <span>&gt; Importe uma prancha ou revise um FDS existente.</span>
+              <span>&gt; A extracao automatica deve identificar paredes, aberturas, escala e preventivos.</span>
             </div>
           </section>
 
-          <section class="panel queue-panel" aria-labelledby="queueTitle">
+          <section class="panel queue-panel" aria-labelledby="fireTitle">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Fila</p>
-                <h2 id="queueTitle">Execucoes recentes</h2>
+                <p class="eyebrow">Inputs obrigatorios</p>
+                <h2 id="fireTitle">Cenario de incendio</h2>
               </div>
-              <button class="ghost-button" type="button" id="clearQueue">Limpar</button>
+              <button class="ghost-button" type="button" id="clearQueue">Limpar fila</button>
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Cenario</th>
-                    <th>Modulo</th>
-                    <th>Status</th>
-                    <th>Duracao</th>
-                  </tr>
-                </thead>
-                <tbody id="runTable">
-                  <tr>
-                    <td>PPCI Claudia</td>
-                    <td>FDS</td>
-                    <td><span class="state waiting">Aguardando</span></td>
-                    <td>300 s</td>
-                  </tr>
-                </tbody>
-              </table>
+
+            <form class="form-grid compact-form" id="fireForm">
+              <label>
+                <span>Material que deve queimar</span>
+                <select name="fuelType" id="fuelType">
+                  <option value="generic_office" data-hrr="500">Carga de escritorio - mesas, papeis e plasticos leves</option>
+                  <option value="wood" data-hrr="350">Madeira comum - mobiliario, portas e paineis</option>
+                  <option value="foam" data-hrr="900">Espuma/poliuretano - sofas, colchoes e estofados</option>
+                  <option value="textile" data-hrr="420">Tecido - cortinas, roupas e armazenagem leve</option>
+                  <option value="custom" data-hrr="0">Personalizado - informar curva e propriedades</option>
+                </select>
+              </label>
+              <label>
+                <span>Coeficiente / HRRPUA inicial</span>
+                <input name="hrrpua" id="hrrpua" type="number" min="0" value="500">
+              </label>
+              <label>
+                <span>Local do incidente</span>
+                <select name="incidentLocation">
+                  <option>Sala principal</option>
+                  <option>Circulacao</option>
+                  <option>Ambiente de apoio</option>
+                  <option>Coordenada manual X/Y/Z</option>
+                </select>
+              </label>
+              <label>
+                <span>Tempo de simulacao</span>
+                <input name="duration" type="number" min="1" value="300">
+              </label>
+              <label>
+                <span>Malha alvo</span>
+                <select name="meshSize">
+                  <option>Rapida - 0,50 m</option>
+                  <option selected>Intermediaria - 0,25 m</option>
+                  <option>Detalhada - 0,10 m</option>
+                </select>
+              </label>
+              <label>
+                <span>Ventilacao inicial</span>
+                <select name="ventilation">
+                  <option>Aberturas da prancha</option>
+                  <option>Portas abertas</option>
+                  <option>Portas fechadas</option>
+                  <option>Manual</option>
+                </select>
+              </label>
+            </form>
+
+            <div class="help-box" id="fuelHelp">
+              Carga de escritorio: aproximacao para iniciar o estudo quando a ocupacao possui mesas, papel e plasticos leves. A curva deve ser revisada conforme carga de incendio real.
             </div>
           </section>
 
-          <section class="panel metrics-panel" aria-labelledby="metricsTitle">
+          <section class="panel metrics-panel" aria-labelledby="detectTitle">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Indicadores</p>
-                <h2 id="metricsTitle">Resumo</h2>
+                <p class="eyebrow">Preventivos detectados</p>
+                <h2 id="detectTitle">Itens para conferencia</h2>
               </div>
             </div>
             <div class="metric-list">
               <div class="metric-item">
-                <span>Cenarios</span>
-                <strong id="scenarioCount">1</strong>
+                <span>Extintores</span>
+                <strong id="extinguisherCount">2</strong>
               </div>
               <div class="metric-item">
-                <span>Tempo total</span>
-                <strong id="totalDuration">300 s</strong>
+                <span>Hidrantes</span>
+                <strong id="hydrantCount">1</strong>
               </div>
               <div class="metric-item">
-                <span>Ultimo modulo</span>
-                <strong id="lastModule">FDS</strong>
+                <span>Saidas</span>
+                <strong id="exitCount">3</strong>
+              </div>
+              <div class="metric-item">
+                <span>Paredes/obstaculos</span>
+                <strong id="solidCount">14</strong>
               </div>
             </div>
           </section>

@@ -1,32 +1,26 @@
-const moduleButtons = document.querySelectorAll("[data-module]");
-const moduleBadge = document.querySelector("#moduleBadge");
-const runButton = document.querySelector("#runButton");
+const navButtons = document.querySelectorAll("[data-view]");
+const workflowButtons = document.querySelectorAll("[data-step]");
+const generateButton = document.querySelector("#generateButton");
 const validateButton = document.querySelector("#validateButton");
 const smokeviewButton = document.querySelector("#smokeviewButton");
-const parameterForm = document.querySelector("#parameterForm");
-const runTable = document.querySelector("#runTable");
+const extractButton = document.querySelector("#extractButton");
+const projectForm = document.querySelector("#projectForm");
+const fireForm = document.querySelector("#fireForm");
+const fuelType = document.querySelector("#fuelType");
+const hrrpua = document.querySelector("#hrrpua");
+const fuelHelp = document.querySelector("#fuelHelp");
 const consoleOutput = document.querySelector("#consoleOutput");
 const engineStatus = document.querySelector("#engineStatus");
-const scenarioCount = document.querySelector("#scenarioCount");
-const totalDuration = document.querySelector("#totalDuration");
-const lastModule = document.querySelector("#lastModule");
-const clearQueue = document.querySelector("#clearQueue");
 
 const API_BASE = "http://127.0.0.1:8765";
-let activeModule = "FDS";
-let pollTimer = null;
 
-function formPayload() {
-  const data = new FormData(parameterForm);
-  return {
-    scenario: data.get("scenario") || "Cenario sem nome",
-    inputFile: data.get("inputFile") || "",
-    duration: data.get("duration") || "0",
-    sample: data.get("sample") || "0",
-    mode: data.get("mode") || "",
-    exportReport: data.get("exportReport") === "on",
-  };
-}
+const fuelDescriptions = {
+  generic_office: "Carga de escritorio: aproximacao para mesas, papel e plasticos leves. Use como ponto de partida e revise conforme carga de incendio real.",
+  wood: "Madeira comum: adequada para mobiliario, portas e paineis. A taxa de liberacao de calor depende da area exposta e ventilacao.",
+  foam: "Espuma/poliuretano: representa sofas, colchoes e estofados. Tende a liberar calor e fumaca rapidamente, exigindo revisao criteriosa.",
+  textile: "Tecido: aplicavel a cortinas, roupas e armazenagem leve. A propagacao pode mudar bastante conforme densidade e disposicao.",
+  custom: "Personalizado: use quando houver ensaio, curva conhecida ou material especifico. A GUI deve pedir propriedades completas antes de exportar.",
+};
 
 function addConsoleLine(message) {
   const line = document.createElement("span");
@@ -35,34 +29,29 @@ function addConsoleLine(message) {
   consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
-function updateMetrics() {
-  const rows = Array.from(runTable.querySelectorAll("tr"));
-  const total = rows.reduce((sum, row) => {
-    const durationCell = row.cells[3]?.textContent || "0";
-    return sum + Number.parseInt(durationCell, 10);
-  }, 0);
-
-  scenarioCount.textContent = String(rows.length);
-  totalDuration.textContent = `${total || 0} s`;
-  lastModule.textContent = rows[0]?.cells[1]?.textContent || "-";
+function setActiveStep(step) {
+  navButtons.forEach((button) => button.classList.toggle("active", button.dataset.view === step));
+  workflowButtons.forEach((button) => button.classList.toggle("active", button.dataset.step === step));
+  engineStatus.textContent = step === "fds" ? "Pronto para exportar" : "Em modelagem";
+  addConsoleLine(`Etapa ativa: ${step}.`);
 }
 
-function createRunRow(payload, statusText = "Executando") {
-  const row = document.createElement("tr");
-  const scenarioCell = document.createElement("td");
-  const moduleCell = document.createElement("td");
-  const statusCell = document.createElement("td");
-  const durationCell = document.createElement("td");
-  const status = document.createElement("span");
-
-  scenarioCell.textContent = payload.scenario;
-  moduleCell.textContent = activeModule;
-  status.className = "state running";
-  status.textContent = statusText;
-  statusCell.appendChild(status);
-  durationCell.textContent = `${payload.duration} s`;
-  row.append(scenarioCell, moduleCell, statusCell, durationCell);
-  return row;
+function formPayload() {
+  const projectData = new FormData(projectForm);
+  const fireData = new FormData(fireForm);
+  return {
+    projectName: projectData.get("projectName") || "Projeto sem nome",
+    drawingFile: projectData.get("drawingFile") || "",
+    inputFile: projectData.get("inputFile") || "",
+    ceilingHeight: projectData.get("ceilingHeight") || "0",
+    area: projectData.get("area") || "0",
+    fuelType: fireData.get("fuelType") || "",
+    hrrpua: fireData.get("hrrpua") || "0",
+    incidentLocation: fireData.get("incidentLocation") || "",
+    duration: fireData.get("duration") || "0",
+    meshSize: fireData.get("meshSize") || "",
+    ventilation: fireData.get("ventilation") || "",
+  };
 }
 
 async function postJson(path, payload) {
@@ -78,32 +67,25 @@ async function postJson(path, payload) {
   return data;
 }
 
-async function refreshStatus(row) {
-  const response = await fetch(`${API_BASE}/api/status`);
-  const status = await response.json();
-  engineStatus.textContent = status.running ? "Executando" : "Pronto";
+navButtons.forEach((button) => {
+  button.addEventListener("click", () => setActiveStep(button.dataset.view));
+});
 
-  const lastLines = status.log.slice(-8);
-  consoleOutput.innerHTML = "";
-  lastLines.forEach(addConsoleLine);
+workflowButtons.forEach((button) => {
+  button.addEventListener("click", () => setActiveStep(button.dataset.step));
+});
 
-  if (!status.running && row) {
-    const state = row.querySelector(".state");
-    state.className = status.last_return_code === 0 ? "state complete" : "state waiting";
-    state.textContent = status.last_return_code === 0 ? "Concluido" : "Verificar log";
-    window.clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
+fuelType.addEventListener("change", () => {
+  const selected = fuelType.selectedOptions[0];
+  hrrpua.value = selected.dataset.hrr || "0";
+  fuelHelp.textContent = fuelDescriptions[fuelType.value];
+  addConsoleLine(`Material selecionado: ${selected.textContent}.`);
+});
 
-moduleButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    moduleButtons.forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    activeModule = button.dataset.module.toUpperCase();
-    moduleBadge.textContent = activeModule;
-    addConsoleLine(`Modulo ${activeModule} selecionado.`);
-  });
+extractButton.addEventListener("click", () => {
+  engineStatus.textContent = "Revisao necessaria";
+  addConsoleLine("Extracao simulada: paredes, aberturas e preventivos foram marcados para conferencia.");
+  addConsoleLine("Proxima etapa real: conectar OCR/CV para ler PDF/DWG/imagem da prancha.");
 });
 
 validateButton.addEventListener("click", async () => {
@@ -111,28 +93,26 @@ validateButton.addEventListener("click", async () => {
     const result = await postJson("/api/validate", formPayload());
     addConsoleLine(`FDS: ${result.fds}`);
     addConsoleLine(`Smokeview: ${result.smokeview}`);
-    addConsoleLine(result.ok ? "Ambiente validado." : "Validacao incompleta. Confira caminhos.");
+    addConsoleLine(result.ok ? "Ambiente FDS/SMV validado." : "Validacao incompleta. Confira caminhos.");
   } catch (error) {
     addConsoleLine(error.message);
   }
 });
 
-runButton.addEventListener("click", async () => {
+generateButton.addEventListener("click", async () => {
   const payload = formPayload();
-  const row = createRunRow(payload);
-  runTable.prepend(row);
-  updateMetrics();
+  engineStatus.textContent = "Exportando";
+  addConsoleLine(`Geracao solicitada para "${payload.projectName}".`);
+  addConsoleLine(`Incidente: ${payload.incidentLocation}; material: ${fuelType.selectedOptions[0].textContent}; HRRPUA: ${payload.hrrpua}.`);
+  addConsoleLine("Nesta etapa a GUI deve converter solidos revisados em MESH/OBST/VENT/SURF/REAC antes de chamar o FDS.");
 
   try {
     await postJson("/api/run", payload);
-    engineStatus.textContent = "Executando";
-    addConsoleLine(`FDS iniciado para "${payload.scenario}".`);
-    window.clearInterval(pollTimer);
-    pollTimer = window.setInterval(() => refreshStatus(row), 1200);
+    addConsoleLine("FDS iniciado usando o arquivo de saida configurado.");
+    engineStatus.textContent = "Executando FDS";
   } catch (error) {
-    row.querySelector(".state").className = "state waiting";
-    row.querySelector(".state").textContent = "Erro";
     addConsoleLine(error.message);
+    engineStatus.textContent = "Revisar entradas";
   }
 });
 
@@ -145,18 +125,7 @@ smokeviewButton.addEventListener("click", async () => {
   }
 });
 
-clearQueue.addEventListener("click", () => {
-  runTable.innerHTML = "";
-  addConsoleLine("Fila de execucoes limpa.");
-  updateMetrics();
+document.querySelector("#clearQueue").addEventListener("click", () => {
+  consoleOutput.innerHTML = "";
+  addConsoleLine("Console limpo.");
 });
-
-document.querySelectorAll("[data-view]").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll("[data-view]").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    addConsoleLine(`Area "${button.textContent.trim()}" aberta.`);
-  });
-});
-
-updateMetrics();

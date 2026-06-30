@@ -157,6 +157,30 @@ h2 {
   gap: 8px;
 }
 
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.workflow-step {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.workflow-step.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .icon-button,
 .primary-button,
 .ghost-button,
@@ -332,6 +356,104 @@ button:focus-visible {
   font-size: 0.84rem;
 }
 
+.plan-canvas {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr;
+  grid-template-rows: 1fr 0.7fr;
+  gap: 8px;
+  min-height: 250px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(90deg, rgba(23, 32, 27, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(23, 32, 27, 0.05) 1px, transparent 1px),
+    #fbfcfb;
+  background-size: 18px 18px;
+}
+
+.room {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 3px solid #25372e;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.room-main {
+  grid-row: span 2;
+}
+
+.room-corridor {
+  border-color: #55645a;
+}
+
+.room-service {
+  border-color: #7b8b81;
+}
+
+.incident-marker,
+.device {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+}
+
+.incident-marker {
+  width: 18px;
+  height: 18px;
+  right: 34%;
+  bottom: 32%;
+  border: 3px solid #ffffff;
+  background: #c8422b;
+  box-shadow: 0 0 0 3px rgba(200, 66, 43, 0.3);
+}
+
+.device {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(23, 32, 27, 0.18);
+}
+
+.extinguisher {
+  left: 26px;
+  bottom: 24px;
+  background: #c8422b;
+}
+
+.hydrant {
+  right: 26px;
+  top: 36px;
+  background: #2268a8;
+}
+
+.exit-sign {
+  right: 32px;
+  bottom: 28px;
+  background: #2f7d4f;
+}
+
+.compact-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.help-box {
+  margin-top: 14px;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -409,6 +531,11 @@ th {
   }
 
   .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-strip,
+  .compact-form {
     grid-template-columns: 1fr;
   }
 }
