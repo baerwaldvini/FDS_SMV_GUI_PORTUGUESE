@@ -67,6 +67,21 @@
           <button class="workflow-step" type="button" data-step="fds">5. Exportar</button>
         </section>
 
+        <section class="step-guide" aria-live="polite" aria-labelledby="stepTitle">
+          <div>
+            <p class="eyebrow">Orientacao da etapa</p>
+            <h2 id="stepTitle">1. Ler prancha</h2>
+            <p id="stepDescription">
+              Envie a prancha para que a GUI identifique escala, limites da edificacao, compartimentos, aberturas e simbolos de preventivos. Esses dados viram a base geometrica do arquivo FDS.
+            </p>
+          </div>
+          <ul id="stepChecklist">
+            <li>Escolha PDF, DXF, DWG ou imagem da prancha.</li>
+            <li>Informe a escala quando ela nao puder ser lida com confianca.</li>
+            <li>Defina a pasta onde os arquivos gerados serao salvos.</li>
+          </ul>
+        </section>
+
         <section class="workspace-grid" aria-label="Espaco de trabalho">
           <section class="panel module-panel" aria-labelledby="projectTitle">
             <div class="panel-heading">
@@ -81,6 +96,7 @@
               <label>
                 <span>Nome do projeto</span>
                 <input name="projectName" type="text" value="PPCI Claudia - Incendio Grande" autocomplete="off">
+                <small class="field-note">Usado para nomear o caso, o CHID do FDS e os arquivos gerados.</small>
               </label>
               <label>
                 <span>Arquivo da prancha</span>
@@ -88,6 +104,7 @@
                   <input name="drawingFile" id="drawingFile" type="text" value="C:\Users\Vinicius\Downloads\PPCI_Claudia_Incendio_Grande.fds" autocomplete="off">
                   <button class="browse-button" type="button" data-file-target="drawingFile" data-file-kind="drawing">Procurar</button>
                 </div>
+                <small class="field-note">Fonte para extrair geometria, aberturas, cotas e preventivos.</small>
               </label>
               <label>
                 <span>Escala da prancha</span>
@@ -97,14 +114,17 @@
                   <option>1:200</option>
                   <option>Informar manualmente</option>
                 </select>
+                <small class="field-note">Converte medidas da prancha para metros reais no dominio FDS.</small>
               </label>
               <label>
                 <span>Pe-direito padrao</span>
                 <input name="ceilingHeight" type="number" min="1" step="0.05" value="2.80">
+                <small class="field-note">Define altura de ambientes, volume de fumaca e dimensao Z da malha.</small>
               </label>
               <label>
                 <span>Area total estimada</span>
                 <input name="area" type="number" min="1" step="0.01" value="511.57">
+                <small class="field-note">Ajuda a validar se a geometria extraida da prancha esta coerente.</small>
               </label>
               <label>
                 <span>Pasta de saida</span>
@@ -112,6 +132,7 @@
                   <input name="outputFolder" id="outputFolder" type="text" value="C:\Users\Vinicius\Documents\FDS" autocomplete="off">
                   <button class="browse-button" type="button" data-file-target="outputFolder" data-file-kind="folder">Procurar</button>
                 </div>
+                <small class="field-note">A GUI cria aqui o .fds, logs, resultados e arquivos para Smokeview.</small>
               </label>
               <label class="toggle-row">
                 <input name="reviewRequired" type="checkbox" checked>
@@ -126,7 +147,7 @@
                 <p class="eyebrow">Modelo extraido</p>
                 <h2 id="previewTitle">Edificacao solida</h2>
               </div>
-              <button class="ghost-button" type="button" id="extractButton">Simular extracao</button>
+              <button class="ghost-button" type="button" id="extractButton">Interpretar prancha</button>
             </div>
 
             <div class="plan-canvas" aria-label="Previa esquematica da edificacao">
@@ -166,10 +187,12 @@
                   <option value="textile" data-hrr="420">Tecido - cortinas, roupas e armazenagem leve</option>
                   <option value="custom" data-hrr="0">Personalizado - informar curva e propriedades</option>
                 </select>
+                <small class="field-note">A prancha nao sabe a carga combustivel; voce define o material do foco inicial.</small>
               </label>
               <label>
                 <span>Coeficiente / HRRPUA inicial</span>
                 <input name="hrrpua" id="hrrpua" type="number" min="0" value="500">
+                <small class="field-note">Informa a taxa de liberacao de calor por area que alimenta a superficie de fogo no FDS.</small>
               </label>
               <label>
                 <span>Local do incidente</span>
@@ -179,10 +202,12 @@
                   <option>Ambiente de apoio</option>
                   <option>Coordenada manual X/Y/Z</option>
                 </select>
+                <small class="field-note">Posiciona o foco no modelo para calcular propagacao de fumaca e calor.</small>
               </label>
               <label>
                 <span>Tempo de simulacao</span>
                 <input name="duration" type="number" min="1" value="300">
+                <small class="field-note">Determina por quanto tempo o FDS calcula a evolucao do incendio.</small>
               </label>
               <label>
                 <span>Malha alvo</span>
@@ -191,6 +216,7 @@
                   <option selected>Intermediaria - 0,25 m</option>
                   <option>Detalhada - 0,10 m</option>
                 </select>
+                <small class="field-note">Controla precisao e custo computacional; celulas menores demoram mais.</small>
               </label>
               <label>
                 <span>Ventilacao inicial</span>
@@ -200,6 +226,7 @@
                   <option>Portas fechadas</option>
                   <option>Manual</option>
                 </select>
+                <small class="field-note">Define como portas, janelas e aberturas influenciam entrada de ar e saida de fumaca.</small>
               </label>
             </form>
 
